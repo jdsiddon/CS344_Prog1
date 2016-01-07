@@ -2,10 +2,14 @@
 # Loop through each line in file.
 file=$1
 
-while read -r line || [[ -n "$line" ]]; do
-	echo "Text: $line"
+while read line  
+do
 	# Loop through each value in line.
-	#while read element; do
-	#	echo "e: $element";
-	#done < "$line" 
-done < "$file" 			# $1 is the first command line arg.
+	for elem in ${line[@]}
+	do
+		echo "$elem"
+	done
+	echo ""
+	 
+
+done < $file 			# $1 is the first command line arg.
