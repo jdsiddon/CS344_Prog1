@@ -34,11 +34,14 @@ do
 	echo ""
 	 
 
-done < $file 			# $1 is the first command line arg.
+done < "$file" 			# $1 is the first command line arg.
 
 # Loop through each column in file.
+
+columns="$(head -1 test_file | wc -w)"
+echo "$columns"
 while read column
 do
 	echo $column
 
-done < $file
+done < "$file"
