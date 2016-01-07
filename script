@@ -1,15 +1,44 @@
 #!/bin/bash
-# Loop through each line in file.
-file=$1
+#
 
+err="Usage: stats {-rows|-cols} [file]"
+
+# Validate command line arguments.
+if [ $# -eq 0 ]					# No command line arguments were passed.
+then
+	echo "$err"
+	exit 1
+elif [ $# -gt 2 ]				# More than two command line arguments were passed.
+then
+	echo "$err"
+	exit 1
+fi
+
+sort=$1
+file=$2
+row_sum=0
+
+echo "$sort"
+
+# Loop through each line in file.
 while read line  
 do
 	# Loop through each value in line.
 	for elem in ${line[@]}
 	do
 		echo "$elem"
+		row_sum=`expr $row_sum + $elem`
 	done
+	echo "$row_sum"
+	row_sum=0
 	echo ""
 	 
 
 done < $file 			# $1 is the first command line arg.
+
+# Loop through each column in file.
+while read column
+do
+	echo $column
+
+done < $file
