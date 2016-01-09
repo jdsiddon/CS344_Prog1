@@ -4,7 +4,7 @@
 err="Usage: stats {-rows|-cols} [file]"
 
 # Validate command line arguments.
-if [ $# -eq 0 ]					# No command line arguments were passed.
+if [ $# -lt 2 ]					# No command line arguments were passed.
 then
 	echo "$err"
 	exit 1
