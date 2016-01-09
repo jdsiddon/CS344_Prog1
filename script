@@ -19,6 +19,7 @@ sort=$1
 file=$2
 row_sum=0
 elem_count=0
+avg=0
 
 echo "$sort"
 
@@ -35,6 +36,8 @@ do
 	done
 	echo "Row sum: $row_sum"
 	echo "Elem count: $elem_count"
+	let "avg=$row_sum/$elem_count"
+	echo "Avg: $avg"
 	row_sum=0
 	elem_count=0
 	echo ""
