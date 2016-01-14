@@ -50,11 +50,13 @@ do
 	numerator=$(($row_sum*10))
 	denominator=$elem_count
 	avg=$(((($numerator/$denominator)+5)/10))
-#	echo "Avg: $avg"
-	row_sum=0
-	elem_count=0
+	
+	# Print out both calculated values.	
 	echo "$avg       $median"
 
+	# Reset variables for row calculation.	
+	row_sum=0
+	elem_count=0
 	rm tmp
 
 done < "$file" 			# $1 is the first command line arg.
@@ -62,9 +64,19 @@ done < "$file" 			# $1 is the first command line arg.
 # Loop through each column in file.
 
 columns="$(head -1 test_file | wc -w)"
-echo "$columns"
-while read column
+echo "Col: $columns"
+column_num=1
+while [ $column_num -le $columns ]
 do
-	echo $column
+	# Create a row from the column elements.
+	while read column_string
+	do
+		column=( echo $column_string )
+	#	echo $column
+		echo -ne "${column[$column_num]} " >> tmpRow
+	#	column_num=$(($column_num))
+	done < "$file"
+	echo "" >> tmpRow
+	column_num=$(($column_num+1))
+done
 
-done < "$file"
