@@ -2,21 +2,30 @@
 #
 
 err="Usage: stats {-rows|-cols} [file]"
-
+sort=$1
+#file=$2
 # Validate command line arguments.
-if [ $# -lt 2 ]					# No command line arguments were passed.
+
+if [[ $# -gt 2 || $# -lt 1 ]]				# More than two command line arguments were passed or no command line args.
 then
 	echo "$err"
 	exit 1
-elif [ $# -gt 2 ]				# More than two command line arguments were passed.
+elif [ $# -eq 2 ]					# 2 Args were passed so check that the second is a readable file.
 then
-	echo "$err"
-	exit 1
+	# Check file is readable 
+	if ! [ -r $2 ]				# Make sure file is readable.
+	then 
+		echo "Can't read input"
+		exit 1
+	else					# File is readable so assign to variable.
+		file=$2
+	fi
 fi
 
+
 # Arguments valid so lets declare variables.
-sort=$1
-file=$2
+#sort=$1
+#file=$2
 row_sum=0
 elem_count=0
 avg=0
@@ -24,6 +33,14 @@ median=0
 round_up=0.5
 rounded_avg=0
 numerator=0
+
+
+# Check file is readable 
+if ! [ -r $2 ]				# Make sure file is readable.
+then 
+	echo "Can't read input"
+	exit 1
+fi
 
 # Check the sort option and see if they want to calc by rows or columns.
 name=$(echo $sort | cut -c2-2)		# Get the first character following '-' so '-col' means 'file=c'. 
@@ -62,7 +79,7 @@ function calcRows {
 		elem_count=0
 		rm tmp
 
-	done < "$file" 			# $1 is the first command line arg.
+	done < "${file:-/dev/stdin}" 			# $1 is the first command line arg.
 }
 
 # Loop through each column in file.
