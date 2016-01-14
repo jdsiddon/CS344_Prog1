@@ -25,26 +25,42 @@ rounded_avg=0
 numerator=0
 echo "$sort"
 
-# Loop through each line in file.
-while read line  
+# Loop through each line in file. ROWS
+while read line
 do
-	
 	# Loop through each value in line.
 	for elem in ${line[@]}
 	do
-		echo "$elem"
+		echo "$elem" >> tmp
 		row_sum=`expr $row_sum + $elem`
 		elem_count=`expr $elem_count + 1`
 	done
 	echo "Row sum: $row_sum"
 	echo "Elem count: $elem_count"
+
+	# Calculate median
+	sorted_line=($(cat tmp | sort))
+	middle=$(($elem_count/2))
+	if [ $(($elem_count%2)) -eq 0 ]
+	then
+		m1=${sorted_line[$middle]}
+		m2=${sorted_line[$(($middle-1))]}
+		median=$(((m1+m2)/2))
+	else
+		median=${sorted_line[$middle]}
+	fi
+	echo "median: $median"
+	
+	# Calculate average
 	numerator=$(($row_sum*10))
 	denominator=$elem_count
 	avg=$(((($numerator/$denominator)+5)/10))
-	echo "Rounded Avg: $avg"
+	echo "Avg: $avg"
 	row_sum=0
 	elem_count=0
 	echo ""
+
+	rm tmp
 
 done < "$file" 			# $1 is the first command line arg.
 
