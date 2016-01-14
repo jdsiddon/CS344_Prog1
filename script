@@ -20,7 +20,9 @@ file=$2
 row_sum=0
 elem_count=0
 avg=0
-
+round_up=0.5
+rounded_avg=0
+numerator=0
 echo "$sort"
 
 # Loop through each line in file.
@@ -36,12 +38,13 @@ do
 	done
 	echo "Row sum: $row_sum"
 	echo "Elem count: $elem_count"
-	let "avg=$row_sum/$elem_count"
-	echo "Avg: $avg"
+	numerator=$(($row_sum*10))
+	denominator=$elem_count
+	avg=$(((($numerator/$denominator)+5)/10))
+	echo "Rounded Avg: $avg"
 	row_sum=0
 	elem_count=0
 	echo ""
-	 
 
 done < "$file" 			# $1 is the first command line arg.
 
