@@ -3,16 +3,15 @@
 
 err="Usage: stats {-rows|-cols} [file]"
 sort=$1
-#file=$2
-# Validate command line arguments.
 
-if [[ $# -gt 2 || $# -lt 1 ]]				# More than two command line arguments were passed or no command line args.
+# Validate command line arguments.
+if [[ $# -gt 2 || $# -lt 1 ]]		 	# More than two command line arguments were passed or no command line args.
 then
 	echo "$err"
 	exit 1
-elif [ $# -eq 2 ]					# 2 Args were passed so check that the second is a readable file.
+elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
 then
-	# Check file is readable 
+	
 	if ! [ -r $2 ]				# Make sure file is readable.
 	then 
 		echo "Can't read input"
@@ -22,10 +21,8 @@ then
 	fi
 fi
 
-
 # Arguments valid so lets declare variables.
-#sort=$1
-#file=$2
+name=$(echo $1 | cut -c2-2)		# Sort option, the first character following '-' so '-col' means 'file=c'. 
 row_sum=0
 elem_count=0
 avg=0
@@ -35,19 +32,7 @@ rounded_avg=0
 numerator=0
 
 
-# Check file is readable 
-if ! [ -r $2 ]				# Make sure file is readable.
-then 
-	echo "Can't read input"
-	exit 1
-fi
 
-# Check the sort option and see if they want to calc by rows or columns.
-name=$(echo $sort | cut -c2-2)		# Get the first character following '-' so '-col' means 'file=c'. 
-
-
-
-# 
 function calcRows {
 	# Loop through each line in file. ROWS
 	echo "Average Median"		# Print value headings out.
@@ -87,7 +72,8 @@ function calcRows {
 function columnConvert {
 	touch tmpConvert	# Create temp file
 	
-	columns="$(head -1 $file | wc -w)"
+	columns="$(head -1 ${file:-/dev/stdin} | wc -w)"		# Get the number of columns contained in stdin or file.
+
 	echo "Col: $columns"
 	column_num=1
 	tmp="tmpConvert"
@@ -99,7 +85,8 @@ function columnConvert {
 		do
 			column=( echo $column_string )
 			echo -ne "${column[$column_num]} " >> $tmp
-		done < "$file"
+		done < "${file:-/dev/stdin}"
+
 		echo "" >> $tmp
 		column_num=$(($column_num+1))
 	done
@@ -108,13 +95,21 @@ function columnConvert {
 	
 }
 
-if [ "$name" = "c" ]
+
+if [ "$name" = "c" ]		# Calc by columns.
 then
 	columnConvert
 	calcRows
 	rm tmpConvert
-else
+
+elif [ "$name" = "r" ]		# Calc by rows.
+then
 	calcRows
+
+else				# Sort option invalid, show err and exit.
+	echo $err
+	exit 1
+
 fi
 
 exit 0
