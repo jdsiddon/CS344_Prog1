@@ -11,9 +11,9 @@ then
 	exit 1
 elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
 then
-	
+
 	if ! [ -r $2 ]				# Make sure file is readable.
-	then 
+	then
 		echo "Can't read input"
 		exit 1
 	else					# File is readable so assign to variable.
@@ -22,7 +22,7 @@ then
 fi
 
 # Arguments valid so lets declare variables.
-name=$(echo $1 | cut -c2-2)		# Sort option, the first character following '-' so '-col' means 'file=c'. 
+name=$(echo $1 | cut -c2-2)		# Sort option, the first character following '-' so '-col' means 'file=c'.
 row_sum=0
 elem_count=0
 avg=0
@@ -30,14 +30,37 @@ median=0
 round_up=0.5
 rounded_avg=0
 numerator=0
+results=calcResults
+
+# $1, temp file, $2=sum, $3=elem_count
+function calculate {
+	# Calculate median
+	sorted_line=($(cat tmp | sort))
+	middle=$(($elem_count/2))
+	median=${sorted_line[$middle]}		# Grab middle val, if even it will grab the larger of two value, if odd it will grab right in the middle.
+
+	# Calculate average
+	numerator=$(($row_sum*10))
+	denominator=$elem_count
+	avg=$(((($numerator/$denominator)+5)/10))
+
+	# Print out both calculated values.
+	echo "$avg $median" >> $results
 
 
+}
 
 function calcRows {
+
 	# Loop through each line in file. ROWS
 	echo "Average Median"		# Print value headings out.
+	echo "File: $file"
 	while read line
 	do
+		row_sum=0
+		elem=0
+		elem_count=0
+
 		# Loop through each value in line.
 		for elem in ${line[@]}
 		do
@@ -46,22 +69,7 @@ function calcRows {
 			elem_count=`expr $elem_count + 1`       # Increment counter for number of elements.
 		done
 
-		# Calculate median
-		sorted_line=($(cat tmp | sort))
-		middle=$(($elem_count/2))
-		median=${sorted_line[$middle]}		# Grab middle val, if even it will grab the larger of two value, if odd it will grab right in the middle.
-	
-		# Calculate average
-		numerator=$(($row_sum*10))
-		denominator=$elem_count
-		avg=$(((($numerator/$denominator)+5)/10))
-	
-		# Print out both calculated values.	
-		echo "$avg       $median"
-
-		# Reset variables for row calculation.	
-		row_sum=0
-		elem_count=0
+		calculate
 		rm tmp
 
 	done < "${file:-/dev/stdin}" 			# $1 is the first command line arg.
@@ -70,41 +78,58 @@ function calcRows {
 # Loop through each column in file.
 # Converts file to a normal row organized file, then calls the standard calculate function.
 function columnConvert {
-	touch tmpConvert	# Create temp file
-	
-	columns="$(head -1 ${file:-/dev/stdin} | wc -w)"		# Get the number of columns contained in stdin or file.
+	columns=5
+	tmpInputCopy=tmpInputCopy
+	tmpRowFile=tmpRowFile
 
-	echo "Col: $columns"
-	column_num=1
-	tmp="tmpConvert"
-	
-	while [ $column_num -le $columns ]
+	# Save stdin or file into a temp file so we can read it multiple times.
+	while read data
+	do
+		echo $data >> $tmpInputCopy
+	done < "${file:-/dev/stdin}"
+
+	columns="$(head -n 1 $tmpInputCopy | wc -w)"		# Get the number of columns contained in stdin or file.
+	column_itr=0	# Initialize iterator to loop through columns.
+
+	while [ $column_itr -lt $columns ]
 	do
 		# Create a row from the column elements.
 		while read column_string
 		do
-			column=( echo $column_string )
-			echo -ne "${column[$column_num]} " >> $tmp
-		done < "${file:-/dev/stdin}"
+			# echo $column_string
+			column=( $(echo $column_string) )			# Convert column line into an array.
+			# echo $column
+			echo -ne "${column[$column_itr]} " >> $tmpRowFile	# Place only one character from line into tmp file.
 
-		echo "" >> $tmp
-		column_num=$(($column_num+1))
+		done < $tmpInputCopy
+
+		echo "" >> $tmpRowFile									# Add newline to the end of the row.
+		column_itr=$(($column_itr+1))						# Increment the column counter.
 	done
-	
-	file=$(echo $tmp)
-	
+
+	rm $tmpInputCopy 						#	Remove tmpInputCopy file
+
 }
 
+# This function prints out the results in the $results file.
+function printResults {
+	while read result_line
+	do
+		echo $result_line
+
+	done < "$results"
+}
 
 if [ "$name" = "c" ]		# Calc by columns.
 then
 	columnConvert
-	calcRows
-	rm tmpConvert
+#	calcRows
+#	rm tmpConvert
 
 elif [ "$name" = "r" ]		# Calc by rows.
 then
 	calcRows
+	printResults
 
 else				# Sort option invalid, show err and exit.
 	echo $err
