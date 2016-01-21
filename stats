@@ -1,24 +1,35 @@
 #!/bin/bash
 #
 
-err="Usage: stats {-rows|-cols} [file]"
-tmpRowFile=$$tmpRowFile														# Temp file to hold columns that have been 'pivoted' to rows for calc.
-tmpCalcResults=$$tmpCalcResults										# Temp file to hold calcuation results.
-name=$(echo $1 | cut -c2-2)												# Get provided sort option, the first character following '-' so '-col' means 'file=c'.
+###################################################
+# Name: Justin Siddon
+# Date: 1/21/16
+# Program: CS344 Program 1 - Average and Median Calculator.
+# This script calculates the average and median of the passed file
+# based on the user's passed arguments. Median and average can be
+# calculated by "rows" or by "columns".
+###################################################
+
 
 # Interrupt, hangup, terminate remove all tmp files.
 trap "{ rm -f $$tmp*; exit 1; }" SIGINT SIGHUP SIGTERM
 
-
-# $1, temp file, $2=sum, $3=elem_count
+###################################################
+# Function: calculate
+# Description: This function calculates the median and mean of a row of data
+# containd in $tmpRowFile and adds them to a $tmpCalcResults file.
+# Arguments:
+#		$1 = the number of values in the row.
+# 	$2 = the sum of the row's values.
+###################################################
 function calculate {
+	# Define local variables.
 	local numerator=0
 	local denominator=0
 	local average=0
 	local median=0
 	local middle=0
 	local sortedLine
-
 	local count=$1
 	local sum=$2
 
@@ -30,14 +41,19 @@ function calculate {
 	# Calculate average
 	numerator=$(($sum*10))
 	denominator=$count
-	average=$(((($numerator/$denominator)+5)/10))
+	average=$(((($numerator/$denominator)+5)/10))				# Round average up or down if >=1.5 round up, if <1.5 round down.
 
-	# Print out both calculated values.
+	# Print out both calculated values to the calculated results file.
 	echo "$average $median" >> $tmpCalcResults
 }
 
-# This function calculates the total sum of each row and number of
+###################################################
+# Function: calcRows
+# Description: This function calculates the total sum of each row and number of
 # values in each row then calls the 'calculate' function for each row.
+# Both '-r' and '-c' use this function so duplicate logic doesn't need to be created/maintained.
+# Arguments: None
+###################################################
 function calcRows {
 	# Define local variables.
 	local rowSum
@@ -48,12 +64,12 @@ function calcRows {
 	# Loop through each line in file.
 	while read line
 	do
-		rowSum=0
+		rowSum=0					# Initalize values that need to be calculated for each line.
 		val=0
 		itr=0
 		valCount=0
 
-		# Loop through each value in line.
+		# Loop through each value in line to calculate sum and count number of numbers.
 		for val in ${line[@]}
 		do
 			echo "$val" >> $tmpRowFile				# Write each element in the line to tmp file so 'calculate' can read it.
@@ -61,8 +77,8 @@ function calcRows {
 			valCount=$(($valCount + 1))     # Increment counter for number of elements.
 		done
 
-		calculate $valCount $rowSum  			# Call calculate function.
-		rm $tmpRowFile
+		calculate $valCount $rowSum  			# Call calculate function, pass it the number of numbers and the row's sum.
+		rm $tmpRowFile										# Remove the single row temp file.
 
 	done < $tmpInputCopy 								# Read from the copy of input made.
 
@@ -70,8 +86,9 @@ function calcRows {
 
 
 ###################################################
-# Loops through each column in file. Converts file to a temporary
-# file organized by rows, then calls the standard calculate function.
+# Function: columnConvert
+# Description: Loops through each column in file. Converts file to a temporary
+# file organized by rows so the same 'calcRows' function can be used.
 # Arguments: None
 ###################################################
 function columnConvert {
@@ -84,65 +101,74 @@ function columnConvert {
 		# Create a row from the column elements.
 		while read columnString
 		do
-			column=( $(echo $columnString) )			# Convert column line into an array.
+			column=( $(echo $columnString) )								# Convert column line into an array.
 			echo -n "${column[$itr]} " >> $convertedRowFile	# Place only one character from line into tmp file.
 		done < $tmpInputCopy
 
-		echo "" >> $convertedRowFile									# Add newline to the end of the row.
-		itr=$(($itr+1))																# Increment the column counter.
+		echo "" >> $convertedRowFile											# Add newline to the end of the row.
+		itr=$(($itr+1))																		# Increment the column counter.
 	done
 
+	# Put the contents of the convertedRowFile into the tmpInputCopy file since
+	# that is where 'calcRows' expects to read values from.
 	cat $convertedRowFile > $tmpInputCopy
-	rm $convertedRowFile
+	rm $convertedRowFile																# Remove the convertedRowFile, we don't need anymore.
 }
 
 ###################################################
-# This function prints out the calculated results that are stored in the $results
-# temporary files.
+# Function: printResults
+# Description: This function prints out the calculated results in a format specified by the passed
+# arguement that are stored in the $tmpCalcResults.
 # Arguments: $1, the type of results to print out.
 # 	1 = row calculation results.
 #		2 = column calculation results.
 ###################################################
 function printResults {
 
-	if [ $1 -eq 1 ]					# Row Cacl. If 1, we are printing out the results of a row calculation.
+	# Row Cacl. If 1, we are printing out the results of a row calculation.
+	if [ $1 -eq 1 ]
 	then
-		echo "Average Median"		# Print value headings out.
+		echo "Average Median"																# Print value headings out.
 		while read result_line
 		do
 			resultRow=( $(echo $result_line) )
-			echo "${resultRow[0]}	${resultRow[1]}"
+			echo "${resultRow[0]}	${resultRow[1]}"						# Print the average and median.
 		done < $tmpCalcResults
 
-	elif [ $1 -eq 2 ]				# Column Calc. If 2, we are printing out the results of a column calcuation.
+	# Column Calc. If 2, we are printing out the results of a column calcuation.
+	elif [ $1 -eq 2 ]
 	then
-		numElements=2					# Initialize number of elements to print which is two because we are showing median and mode.
-		elem=0								# Initialize iterator.
+		numElements=2																				# Initialize number of elements to print which is two because we are showing median and mode.
+		elem=0																							# Initialize iterator.
 
-		while [ $elem -lt $numElements ]				# Covert the row layout back to column layout
+		while [ $elem -lt $numElements ]										# Covert the row layout back to column layout
 		do
-			if [ $elem -eq 0 ]
+			if [ $elem -eq 0 ]																# First value is average.
 			then
 				echo "Average"
 			else
-				echo "Median"
+				echo "Median"																		# Second value is median.
 			fi
 
-
+			# Read each line from calculation results but only print out column values.
 			while read result_line
 			do
-				resultRow=( $(echo $result_line) )			# Convert row line into an array.
-				echo -n "${resultRow[$elem]} "										# Only show 1 value from array.
+				resultRow=( $(echo $result_line) )							# Convert row line into an array.
+				echo -n "${resultRow[$elem]} "									# Only show 1 value from array.
 			done < $tmpCalcResults
 
-			echo ""
+			echo ""																						# Space the values appropriately.
 			elem=$(($elem+1))								# Increment iterator.
 		done
 	fi
 }
 
-# This function copies the data input into a tmp file so we can read from
-# it multiple time.
+###################################################
+# Function: copyInput
+# Description: This function copies the data input into a tmp file so we can read from
+# it multiple times. Sets global variable $tmpInputCopy as data input by user.
+# Arguments: none
+###################################################
 function copyInput {
 	tmpInputCopy=$$tmpInputCopy										# Temp file to save input source, based in PID.
 
@@ -158,30 +184,36 @@ function copyInput {
 
 }
 
+# Main script that runs everytime.
+
+# Setup some global variables.
+err="Usage: stats {-rows|-cols} [file]"						# Standard usage error text to use throughout program.
+tmpRowFile=$$tmpRowFile														# Temp file to hold columns that have been 'pivoted' to rows for calc.
+tmpCalcResults=$$tmpCalcResults										# Temp file to hold calcuation results.
+name=$(echo $1 | cut -c2-2)												# Get provided sort option, the first character following '-' so '-col' means 'file=c'.
 
 
-# Start of script that runs everytime.
 # Validate number of command line arguments is correct.
 if [[ $# -gt 2 || $# -lt 1 ]]		 	# More than two command line arguments were passed or no command line args.
 then
 	echo "$err">&2
 	exit 1
 
-elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
+elif [ $# -eq 2 ]									# 2 Args were passed so check that the second is a readable file.
 then
-	if ! [ -r $2 ]				# Make sure file is readable.
+	if ! [ -r $2 ]									# Make sure file is readable.
 	then
 		echo "Can't read input">&2    # Write error message.
 		exit 1												# Exit with fail.
 
-	else									# File is readable so assign to variable.
+	else														# File is readable so assign to variable.
 		file=$2
 
 	fi
 
 fi
 
-
+# Validate arguements are correct.
 if [ "$name" = "c" ]		# Calc by columns.
 then
 	copyInput							# Copy input values into a separate tmp file.
@@ -201,8 +233,7 @@ else										# Sort option invalid, show err and exit.
 
 fi
 
+# Remove all temp files created during script. Removes all files labeled [PID]tmp[STRING]
+rm -f $$tmp*;
 
-rm $tmpInputCopy 				# Remove copy of input.
-rm $tmpCalcResults					# Remove copy of calculations.
-
-exit 0
+exit 0									# End program.
