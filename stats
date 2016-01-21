@@ -2,14 +2,11 @@
 #
 
 err="Usage: stats {-rows|-cols} [file]"
-#sort=$1
-#tmpInputCopy=tmpInputCopy												# Temp file to save input source.
 tmpRowFile=$$tmpRowFile														# Temp file to hold columns that have been 'pivoted' to rows for calc.
-tmpCalcResults=$$tmpCalcResults													# Temp file to hold calcuation results.
+tmpCalcResults=$$tmpCalcResults										# Temp file to hold calcuation results.
+name=$(echo $1 | cut -c2-2)												# Get provided sort option, the first character following '-' so '-col' means 'file=c'.
 
-name=$(echo $1 | cut -c2-2)											# Get provided sort option, the first character following '-' so '-col' means 'file=c'.
-
-# Interrupt, hangup, terminate
+# Interrupt, hangup, terminate remove all tmp files.
 trap "{ rm -f $$tmp*; exit 1; }" SIGINT SIGHUP SIGTERM
 
 
