@@ -2,30 +2,16 @@
 #
 
 err="Usage: stats {-rows|-cols} [file]"
-sort=$1
-tmpInputCopy=tmpInputCopy												# Temp file to save input source.
-tmpRowFile=tmpRowFile														# Temp file to hold columns that have been 'pivoted' to rows for calc.
+#sort=$1
+#tmpInputCopy=tmpInputCopy												# Temp file to save input source.
+tmpRowFile=$$tmpRowFile														# Temp file to hold columns that have been 'pivoted' to rows for calc.
+tmpCalcResults=$$tmpCalcResults													# Temp file to hold calcuation results.
 
-# Validate command line arguments.
-if [[ $# -gt 2 || $# -lt 1 ]]		 	# More than two command line arguments were passed or no command line args.
-then
-	echo "$err"
-	exit 1
-elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
-then
+name=$(echo $1 | cut -c2-2)											# Get provided sort option, the first character following '-' so '-col' means 'file=c'.
 
-	if ! [ -r $2 ]				# Make sure file is readable.
-	then
-		echo "Can't read input"
-		exit 1
-	else					# File is readable so assign to variable.
-		file=$2
-	fi
-fi
+# Interrupt, hangup, terminate
+trap "{ rm -f $$tmp*; exit 1; }" SIGINT SIGHUP SIGTERM
 
-# Arguments valid so lets declare variables.
-name=$(echo $1 | cut -c2-2)		# Sort option, the first character following '-' so '-col' means 'file=c'.
-calcResults=calcResults
 
 # $1, temp file, $2=sum, $3=elem_count
 function calculate {
@@ -50,18 +36,17 @@ function calculate {
 	average=$(((($numerator/$denominator)+5)/10))
 
 	# Print out both calculated values.
-	echo "$average $median" >> $calcResults
+	echo "$average $median" >> $tmpCalcResults
 }
 
 # This function calculates the total sum of each row and number of
 # values in each row then calls the 'calculate' function for each row.
 function calcRows {
+	# Define local variables.
 	local rowSum
 	local val
 	local itr
 	local valCount
-
-	# echo $(cat tmpInputCopy)
 
 	# Loop through each line in file.
 	while read line
@@ -74,26 +59,28 @@ function calcRows {
 		# Loop through each value in line.
 		for val in ${line[@]}
 		do
-			echo "$val" >> tmpRowFile				# Write each element in the line to tmp file so 'calculate' can read it.
+			echo "$val" >> $tmpRowFile				# Write each element in the line to tmp file so 'calculate' can read it.
 			rowSum=$(($rowSum + $val))			# Add individual value to total row sum.
 			valCount=$(($valCount + 1))     # Increment counter for number of elements.
 		done
 
 		calculate $valCount $rowSum  			# Call calculate function.
-		rm tmpRowFile
+		rm $tmpRowFile
 
 	done < $tmpInputCopy 								# Read from the copy of input made.
 
 }
 
 
-
-# Loop through each column in file.
-# Converts file to a normal row organized file, then calls the standard calculate function.
+###################################################
+# Loops through each column in file. Converts file to a temporary
+# file organized by rows, then calls the standard calculate function.
+# Arguments: None
+###################################################
 function columnConvert {
-	local convertedRowFile=convertedRowFile
+	local convertedRowFile=$$convertedRowFile							# File to store row organized values based of PID.
 	local columns="$(head -n 1 $tmpInputCopy | wc -w)"		# Get the number of columns.
-	local itr=0																		# Initialize iterator to loop through columns.
+	local itr=0																						# Initialize iterator to loop through columns.
 
 	while [ $itr -lt $columns ]
 	do
@@ -108,11 +95,17 @@ function columnConvert {
 		itr=$(($itr+1))																# Increment the column counter.
 	done
 
-	cat convertedRowFile > $tmpInputCopy
-	rm convertedRowFile
+	cat $convertedRowFile > $tmpInputCopy
+	rm $convertedRowFile
 }
 
-# This function prints out the results in the $results file.
+###################################################
+# This function prints out the calculated results that are stored in the $results
+# temporary files.
+# Arguments: $1, the type of results to print out.
+# 	1 = row calculation results.
+#		2 = column calculation results.
+###################################################
 function printResults {
 
 	if [ $1 -eq 1 ]					# Row Cacl. If 1, we are printing out the results of a row calculation.
@@ -122,7 +115,7 @@ function printResults {
 		do
 			resultRow=( $(echo $result_line) )
 			echo "${resultRow[0]}	${resultRow[1]}"
-		done < $calcResults
+		done < $tmpCalcResults
 
 	elif [ $1 -eq 2 ]				# Column Calc. If 2, we are printing out the results of a column calcuation.
 	then
@@ -131,7 +124,7 @@ function printResults {
 
 		while [ $elem -lt $numElements ]				# Covert the row layout back to column layout
 		do
-			if [ $elem -eq 1 ]
+			if [ $elem -eq 0 ]
 			then
 				echo "Average"
 			else
@@ -143,7 +136,7 @@ function printResults {
 			do
 				resultRow=( $(echo $result_line) )			# Convert row line into an array.
 				echo -n "${resultRow[$elem]} "										# Only show 1 value from array.
-			done < $calcResults
+			done < $tmpCalcResults
 
 			echo ""
 			elem=$(($elem+1))								# Increment iterator.
@@ -154,36 +147,65 @@ function printResults {
 # This function copies the data input into a tmp file so we can read from
 # it multiple time.
 function copyInput {
+	tmpInputCopy=$$tmpInputCopy										# Temp file to save input source, based in PID.
+
 	while read data
 	do
 		echo $data >> $tmpInputCopy									# Save input into global variable.
 	done < "${file:-/dev/stdin}"									# Get from $file if avail, otherwise from from stdin.
+
+	if [ ! -s $tmpInputCopy ]											# Check if the provided input was blank.
+	then
+		exit 1
+	fi
+
 }
 
 
 
+# Start of script that runs everytime.
+# Validate number of command line arguments is correct.
+if [[ $# -gt 2 || $# -lt 1 ]]		 	# More than two command line arguments were passed or no command line args.
+then
+	echo "$err"
+	exit 1
 
+elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
+then
+	if ! [ -r $2 ]				# Make sure file is readable.
+	then
+		echo "Can't read input">&2    # Write error message.
+		exit 1												# Exit with fail.
 
-copyInput								# Copy input values into a separate tmp file.
+	else									# File is readable so assign to variable.
+		file=$2
+
+	fi
+
+fi
+
 
 if [ "$name" = "c" ]		# Calc by columns.
 then
+	copyInput							# Copy input values into a separate tmp file.
 	columnConvert					# Convert file columns to rows.
 	calcRows							# Calc values for the rows.
 	printResults 2				# Print results, '2' indicates column calc.
 
 elif [ "$name" = "r" ]	# Calc by rows.
 then
+	copyInput							# Copy input values into a separate tmp file.
 	calcRows							# Calc values for the rows.
 	printResults 1				# Print results, '1' indicates row calc.
 
-else				# Sort option invalid, show err and exit.
+else										# Sort option invalid, show err and exit.
 	echo $err
 	exit 1
 
 fi
 
-rm tmpInputCopy					# Remove copy of input.
-rm calcResults					# Remove copy of calculations.
+
+rm $tmpInputCopy 				# Remove copy of input.
+rm $tmpCalcResults					# Remove copy of calculations.
 
 exit 0
