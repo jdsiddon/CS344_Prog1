@@ -164,18 +164,18 @@ function copyInput {
 
 
 
-copyInput								# Copy input values.
+copyInput								# Copy input values into a separate tmp file.
 
 if [ "$name" = "c" ]		# Calc by columns.
 then
 	columnConvert					# Convert file columns to rows.
 	calcRows							# Calc values for the rows.
-	printResults 2				# Print results.
+	printResults 2				# Print results, '2' indicates column calc.
 
 elif [ "$name" = "r" ]	# Calc by rows.
 then
 	calcRows							# Calc values for the rows.
-	printResults 1				# Print results.
+	printResults 1				# Print results, '1' indicates row calc.
 
 else				# Sort option invalid, show err and exit.
 	echo $err
