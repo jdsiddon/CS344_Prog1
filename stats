@@ -164,7 +164,7 @@ function copyInput {
 # Validate number of command line arguments is correct.
 if [[ $# -gt 2 || $# -lt 1 ]]		 	# More than two command line arguments were passed or no command line args.
 then
-	echo "$err"
+	echo "$err">&2
 	exit 1
 
 elif [ $# -eq 2 ]				# 2 Args were passed so check that the second is a readable file.
@@ -196,7 +196,7 @@ then
 	printResults 1				# Print results, '1' indicates row calc.
 
 else										# Sort option invalid, show err and exit.
-	echo $err
+	echo $err>&2
 	exit 1
 
 fi
